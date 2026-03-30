@@ -1,22 +1,28 @@
 import os
 import pandas as pd
 from collections import defaultdict
-from math import isnan
 
-# -------- CONFIG --------
 BASE_DIR = "dataset/raw"
 OUTPUT_DIR = "dataset/processed/parsed"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# -------- HELPER --------
+
 def safe_float(x):
     try:
         return float(x)
     except:
         return None
 
-# -------- MAIN PARSER --------
+
+def normalize_time(ts):
+    try:
+        return int(int(ts) / 1000)
+    except:
+        return None
+
+
 def parse_gnss_file(file_path, is_inclined):
+
     data = defaultdict(lambda: {
         "lat": None,
         "lon": None,
@@ -28,7 +34,7 @@ def parse_gnss_file(file_path, is_inclined):
         "yaw": None
     })
 
-    with open(file_path, 'r') as f:
+    with open(file_path, 'r', encoding="utf-8") as f:
         for line in f:
             parts = line.strip().split(",")
 
@@ -37,62 +43,73 @@ def parse_gnss_file(file_path, is_inclined):
 
             record_type = parts[0]
 
-            # ---------------- FIX ----------------
+            # -------- FIX --------
             if record_type == "Fix":
                 try:
+                    ts = normalize_time(parts[8])   # ✅ FIXED INDEX
                     lat = safe_float(parts[2])
                     lon = safe_float(parts[3])
                     alt = safe_float(parts[4])
-                    timestamp = parts[9]
 
-                    if lat is not None and lon is not None:
-                        data[timestamp]["lat"] = lat
-                        data[timestamp]["lon"] = lon
-                        data[timestamp]["alt"] = alt
+                    if ts:
+                        data[ts]["lat"] = lat
+                        data[ts]["lon"] = lon
+                        data[ts]["alt"] = alt
                 except:
                     pass
 
-            # ---------------- STATUS ----------------
+            # -------- STATUS --------
             elif record_type == "Status":
                 try:
-                    timestamp = parts[1]
-                    snr = safe_float(parts[6])
-                    elevation = safe_float(parts[8])
+                    ts = normalize_time(parts[1])
+                    snr = safe_float(parts[7])
+                    elev = safe_float(parts[9])
 
-                    if snr is not None:
-                        data[timestamp]["snr_list"].append(snr)
-
-                    if elevation is not None:
-                        data[timestamp]["elev_list"].append(elevation)
+                    if ts:
+                        if snr is not None:
+                            data[ts]["snr_list"].append(snr)
+                        if elev is not None:
+                            data[ts]["elev_list"].append(elev)
                 except:
                     pass
 
-            # ---------------- ORIENTATION ----------------
+            # -------- ORIENTATION --------
             elif record_type == "OrientationDeg":
                 try:
-                    timestamp = parts[1]
+                    ts = normalize_time(parts[1])
                     yaw = safe_float(parts[3])
                     roll = safe_float(parts[4])
                     pitch = safe_float(parts[5])
 
-                    data[timestamp]["yaw"] = yaw
-                    data[timestamp]["roll"] = roll
-                    data[timestamp]["pitch"] = pitch
+                    if ts:
+                        data[ts]["yaw"] = yaw
+                        data[ts]["roll"] = roll
+                        data[ts]["pitch"] = pitch
                 except:
                     pass
 
-    # -------- AGGREGATE --------
     rows = []
 
     for ts, d in data.items():
-        if d["lat"] is None or len(d["snr_list"]) == 0:
+
+        # ✅ ONLY require position (relaxed condition)
+        if d["lat"] is None:
             continue
 
-        mean_snr = sum(d["snr_list"]) / len(d["snr_list"])
-        sat_count = len(d["snr_list"])
-        mean_elev = sum(d["elev_list"]) / len(d["elev_list"]) if d["elev_list"] else 0
+        # Handle missing safely
+        mean_snr = (
+            sum(d["snr_list"]) / len(d["snr_list"])
+            if d["snr_list"] else None
+        )
 
-        row = {
+        sat_count = len(d["snr_list"]) if d["snr_list"] else 0
+
+        mean_elev = (
+            sum(d["elev_list"]) / len(d["elev_list"])
+            if d["elev_list"] else None
+        )
+
+        rows.append({
             "timestamp": ts,
             "latitude": d["lat"],
             "longitude": d["lon"],
@@ -104,35 +121,43 @@ def parse_gnss_file(file_path, is_inclined):
             "pitch": d["pitch"],
             "yaw": d["yaw"],
             "is_inclined": is_inclined
-        }
+        })
 
-        rows.append(row)
+    df = pd.DataFrame(rows)
 
-    return pd.DataFrame(rows)
+    # Debug print
+    print(f"Extracted {len(df)} rows from {os.path.basename(file_path)}")
+
+    return df
 
 
-# -------- PROCESS ALL FILES --------
 def process_all():
+
     folders = {
         "data_with_no_inclination": 0,
         "data_with_inclination": 1
     }
 
     for folder, label in folders.items():
+
         folder_path = os.path.join(BASE_DIR, folder)
 
         for file in os.listdir(folder_path):
-            if file.endswith(".txt"):
-                file_path = os.path.join(folder_path, file)
 
-                print(f"Processing: {file}")
+            if file.endswith(".txt"):
+
+                file_path = os.path.join(folder_path, file)
+                print(f"\nProcessing: {file}")
 
                 df = parse_gnss_file(file_path, label)
+
+                if len(df) == 0:
+                    print("⚠️ Still empty → check file manually")
+                    continue
 
                 output_file = file.replace(".txt", ".csv")
                 df.to_csv(os.path.join(OUTPUT_DIR, output_file), index=False)
 
 
-# -------- RUN --------
 if __name__ == "__main__":
     process_all()
