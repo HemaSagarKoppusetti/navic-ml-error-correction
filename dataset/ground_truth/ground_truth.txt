@@ -1,0 +1,9 @@
+ublox positioned on ground surface with ground plane
+longitude: 78.83323500
+latitude: 18.56334100
+Altitude (MSL): 517.500m
+
+ublox positioned on phone stand at height of approx. 22 cm with ground plane
+longitude: 78.83323233
+latitude: 18.56333783
+Altitude (MSL): 517.900m
