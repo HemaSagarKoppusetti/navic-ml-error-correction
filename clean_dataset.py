@@ -1,7 +1,7 @@
 import pandas as pd
 
 # -------- FILE PATHS --------
-INPUT_FILE = "dataset/processed/merged_with_angle.csv"
+INPUT_FILE = "dataset/processed/merged_dataset_noisy.csv"
 OUTPUT_FILE = "dataset/processed/cleaned_dataset.csv"
 
 
