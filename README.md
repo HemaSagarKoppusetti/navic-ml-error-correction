@@ -134,8 +134,8 @@ dataset/
 │   ├── cleaned_dataset.csv
 │   ├── final_features.csv
 │   ├── ml_dataset.csv
-│   ├── corrected_dataset.csv
-│   └── model_comparison_results.csv
+│   └── corrected_dataset.csv
+│   
 │
 └── ground_truth/
     └── ground_truth.txt
@@ -252,7 +252,7 @@ python evaluate_all_models.py
 
 ### 10. Launch Dashboard
 ```bash
-streamlit run app1.py
+streamlit run app.py
 ```
 
 ---
@@ -331,7 +331,15 @@ The final evaluation shows that:
 navic-ml-error-correction/
 ├── dataset/
 ├── models/
-├── app1.py
+|   ├── rf_x.pkl
+|   ├── rf_y.pkl
+|   ├── xgb_x.pkl
+|   └── ...
+├── notebook
+|   └── model_training.ipynb
+├── results
+|   └── model_comparison_results.csv
+├── app.py
 ├── dataset_parser.py
 ├── merge_datasets.py
 ├── add_angle_feature.py
@@ -339,14 +347,7 @@ navic-ml-error-correction/
 ├── clean_dataset.py
 ├── add_position_jump.py
 ├── create_labels.py
-├── train_rf.py
-├── train_xgb.py
-├── train_svm.py
-├── train_lstm.py
-├── train_tcn.py
-├── evaluate_all_models.py
-├── apply_correction.py
-├── model_comparison_results.csv
+├── LICENSE
 └── README.md
 ```
 
