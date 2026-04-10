@@ -1,4 +1,4 @@
-# 📡 NavIC / GNSS ML Error Correction System
+# Machine Learning Based Correction of NavIC/GNSS Positioning Errors in Indian Urban Environments
 
 ![Python](https://img.shields.io/badge/Python-3.10-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-red)
