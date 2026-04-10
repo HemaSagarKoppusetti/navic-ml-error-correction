@@ -1,0 +1,31 @@
+# -------- BASE IMAGE --------
+FROM python:3.10-slim
+
+# -------- SET WORKDIR --------
+WORKDIR /app
+
+# -------- INSTALL SYSTEM DEPENDENCIES --------
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# -------- COPY FILES --------
+COPY . .
+
+# -------- INSTALL PYTHON DEPENDENCIES --------
+RUN pip install --no-cache-dir --upgrade pip
+
+# If you have requirements.txt (recommended)
+RUN pip install --no-cache-dir -r requirements.txt
+
+# -------- EXPOSE PORT --------
+EXPOSE 8501
+
+# -------- STREAMLIT CONFIG --------
+ENV STREAMLIT_SERVER_HEADLESS=true
+ENV STREAMLIT_SERVER_PORT=8501
+ENV STREAMLIT_SERVER_ENABLECORS=false
+
+# -------- RUN APP --------
+CMD ["streamlit", "run", "app1.py", "--server.port=8501", "--server.address=0.0.0.0"]
