@@ -11,6 +11,23 @@ from tcn import TCN
 
 st.set_page_config(layout="wide")
 
+# ===============================
+# VERCEL SPEED INSIGHTS
+# ===============================
+# Inject Vercel Speed Insights for performance monitoring
+speed_insights_html = """
+<script type="module">
+  import { injectSpeedInsights } from 'https://cdn.jsdelivr.net/npm/@vercel/speed-insights@2.0.0/dist/index.mjs';
+  
+  // Initialize Speed Insights
+  injectSpeedInsights({
+    debug: false,
+    framework: 'streamlit'
+  });
+</script>
+"""
+st.components.html(speed_insights_html, height=0)
+
 st.title("📡 NavIC/GNSS ML Error Correction Dashboard")
 
 # ===============================
