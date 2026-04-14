@@ -8,8 +8,24 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from tensorflow import keras
 from tcn import TCN
+from streamlit.components.v1 import html
 
 st.set_page_config(layout="wide")
+
+# ===============================
+# VERCEL WEB ANALYTICS
+# ===============================
+def inject_vercel_analytics():
+    """Inject Vercel Web Analytics tracking script."""
+    try:
+        with open("vercel_analytics.html", "r") as f:
+            analytics_script = f.read()
+            html(analytics_script, height=0, width=0)
+    except FileNotFoundError:
+        # Silently fail if analytics file is not found
+        pass
+
+inject_vercel_analytics()
 
 st.title("📡 NavIC/GNSS ML Error Correction Dashboard")
 
