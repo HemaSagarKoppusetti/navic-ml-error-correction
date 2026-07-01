@@ -14,6 +14,18 @@ st.set_page_config(layout="wide")
 st.title("📡 NavIC/GNSS ML Error Correction Dashboard")
 
 # ===============================
+# 7. ABOUT PROJECT SECTION
+# ===============================
+with st.expander("📖 About Project"):
+    st.write("""
+This dashboard predicts and corrects GNSS/NavIC positioning errors using
+Machine Learning models such as Random Forest, XGBoost, SVM, LSTM and TCN.
+
+It compares model performance, trajectory correction,
+error distributions and evaluation metrics.
+""")
+
+# ===============================
 # LOAD DATA
 # ===============================
 RESULTS_FILE = "results/model_comparison_results.csv"
@@ -25,6 +37,7 @@ def load_data():
 
 data = load_data()
 results = pd.read_csv(RESULTS_FILE)
+
 # Features used in training
 FEATURES = [
     "mean_snr","sat_count","mean_elevation","mean_azimuth",
@@ -46,34 +59,27 @@ X = scaler.transform(X)
 # ===============================
 # MODEL LOADER (CACHED)
 # ===============================
-
 @st.cache_resource
 def load_model(model_name):
-
     if model_name == "Random Forest":
         return (
             joblib.load("models/rf_x.pkl"),
             joblib.load("models/rf_y.pkl")
         )
-
     elif model_name == "XGBoost":
         return (
             joblib.load("models/xgb_x.pkl"),
             joblib.load("models/xgb_y.pkl")
         )
-
     elif model_name == "SVM":
         return (
             joblib.load("models/svm_x.pkl"),
             joblib.load("models/svm_y.pkl")
         )
-
     elif model_name == "LSTM":
         return keras.models.load_model("models/lstm_tuned.h5", compile=False)
-
     elif model_name == "TCN":
         return keras.models.load_model("models/tcn_model.h5", compile=False)
-
     return None
 
 # ===============================
@@ -86,6 +92,19 @@ model_name = st.sidebar.selectbox(
     results["Model"].tolist()
 )
 selected = results[results["Model"] == model_name].iloc[0]
+
+# ===============================
+# 1. DATASET STATISTICS CARD
+# ===============================
+st.subheader("📈 Dataset Statistics")
+
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Samples", len(data))
+col2.metric("Features", len(data.columns))
+col3.metric("Missing Values", int(data.isnull().sum().sum()))
+col4.metric("Selected Model", model_name)
+
+
 # ===============================
 # MODEL INFORMATION
 # ===============================
@@ -167,6 +186,7 @@ if model_name in ["LSTM", "TCN"]:
     st.warning(
         "This is a sequence model. In this project, it is evaluated mainly for comparison because the dataset is more tabular than temporal."
     )
+
 # ===============================
 # LOAD MODEL
 # ===============================
@@ -183,6 +203,7 @@ if model_name in ["Random Forest", "XGBoost", "SVM"]:
 
 elif model_name in ["LSTM", "TCN"]:
     st.warning("⚠️ Sequence models (LSTM/TCN) require time-series input and are evaluated offline only.")
+
 # ===============================
 # CORRECTION
 # ===============================
@@ -199,6 +220,29 @@ if pred_x is not None:
     )
 else:
     st.info("📊 Showing precomputed metrics for LSTM/TCN")
+
+# ===============================
+# 6. IMPROVEMENT PERCENTAGE & 
+# 2. DOWNLOAD CORRECTED DATASET
+# ===============================
+if "corrected_error" in data.columns:
+    original = data["original_error"].mean()
+    corrected = data["corrected_error"].mean()
+    improvement = ((original-corrected)/original)*100
+
+    col_a, col_b = st.columns([1, 2])
+    with col_a:
+        st.metric("Overall Error Improvement", f"{improvement:.2f}%")
+    
+    with col_b:
+        st.write("") # Spacing 
+        csv = data.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            "📥 Download Corrected Dataset",
+            csv,
+            "corrected_results.csv",
+            "text/csv"
+        )
 
 
 # ===============================
@@ -485,9 +529,6 @@ fig_r2.update_layout(
 st.plotly_chart(fig_r2, width="stretch")
 
 # ===============================
-# INSIGHTS (FIXED + CLEAN UI)
-# ===============================
-# ===============================
 # INSIGHTS (FINAL FIXED VERSION)
 # ===============================
 st.subheader("🧠 Model Insights")
@@ -504,7 +545,6 @@ MODEL_INSIGHTS = {
         "Handles non-linear GNSS feature relationships effectively",
         "Best suited for structured/tabular NavIC data"
     ],
-
     "XGBoost": [
         f"High-performance boosting model",
         f"RMSE X = {rmse_x:.2f}, RMSE Y = {rmse_y:.2f}",
@@ -512,7 +552,6 @@ MODEL_INSIGHTS = {
         "Captures feature interactions (SNR, elevation, azimuth)",
         "Strong alternative to Random Forest"
     ],
-
     "SVM": [
         f"Kernel-based regression model",
         f"RMSE X = {rmse_x:.2f}, RMSE Y = {rmse_y:.2f}",
@@ -520,7 +559,6 @@ MODEL_INSIGHTS = {
         "Works well with scaled GNSS features",
         "Slower and less flexible than tree models"
     ],
-
     "LSTM": [
         f"Sequence-based deep learning model",
         f"RMSE X = {rmse_x:.2f}, RMSE Y = {rmse_y:.2f}",
@@ -529,7 +567,6 @@ MODEL_INSIGHTS = {
         "Dataset lacks strong temporal continuity",
         "Underperforms compared to tree-based models"
     ],
-
     "TCN": [
         f"Temporal Convolutional Network",
         f"RMSE X = {rmse_x:.2f}, RMSE Y = {rmse_y:.2f}",
@@ -574,9 +611,61 @@ card_html = f"""
 
 st.markdown(card_html, unsafe_allow_html=True)
 
+
+# ===============================
+# 3. CORRELATION HEATMAP
+# ===============================
+st.subheader("📊 Feature Correlation")
+corr = data[FEATURES].corr()
+fig = px.imshow(
+    corr,
+    text_auto=".2f",
+    color_continuous_scale="Viridis"
+)
+st.plotly_chart(fig, use_container_width=True)
+
+# ===============================
+# 5. FEATURE EXPLORER
+# ===============================
+st.subheader("🔍 Feature Explorer")
+
+if "original_error" in data.columns:
+    feature = st.selectbox(
+        "Choose Feature",
+        FEATURES
+    )
+
+    fig = px.scatter(
+        data,
+        x=feature,
+        y="original_error",
+        trendline="ols",
+        title=f"{feature} vs Original Error"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.info("Feature Explorer requires 'original_error' column in dataset.")
+
+# ===============================
+# 4. DATASET SUMMARY
+# ===============================
+st.subheader("📋 Dataset Summary")
+st.dataframe(data.describe().round(2))
+
 # ===============================
 # DATA TABLE
 # ===============================
 st.subheader("📄 Sample Data")
 
 st.dataframe(data.head(50), width="stretch")
+
+# ===============================
+# 8. FOOTER
+# ===============================
+st.markdown("---")
+st.markdown(
+"""
+Developed using **Python**, **Streamlit**, **Scikit-Learn**, **TensorFlow**, **Plotly**.
+"""
+)
